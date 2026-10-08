@@ -21,16 +21,21 @@
     <h2>用户管理</h2>
     <div class="row">
       <input id="userName" placeholder="姓名">
-      <input id="userWebhook" placeholder="飞书 webhook URL（可选，运行时填）">
       <button onclick="createUser()">创建用户</button>
+    </div>
+    <div class="row webhook-row">
+      <label>飞书 webhook：</label>
+      <input id="userWebhook" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxx（可选）">
+      <button onclick="createUser()">带 webhook 创建</button>
     </div>
     <div class="row">
       <label>选择用户：</label>
       <select id="userSelect" onchange="selectUser()"><option value="">-- 选择用户 --</option></select>
       <button onclick="deleteUser()" class="danger" id="delUserBtn" hidden>删除该用户</button>
     </div>
-    <div id="userWebhookEdit" class="row" hidden>
-      <input id="editWebhook" placeholder="更新飞书 webhook URL">
+    <div id="userWebhookEdit" class="row webhook-row" hidden>
+      <label>更新 webhook：</label>
+      <input id="editWebhook" placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/xxx">
       <button onclick="updateWebhook()">更新</button>
     </div>
   </section>
@@ -51,10 +56,30 @@
   <section class="card" id="genCard" hidden>
     <h2>生成简报</h2>
     <button id="genBtn" onclick="generateBriefing()">立即生成今日简报</button>
-    <div class="log-area" id="thinkLog" hidden>
-      <div class="log-title">思考过程（实时）</div>
-      <div id="logList"></div>
+
+    <!-- 今日新闻简报内容（按用户订阅话题生成，markdown 渲染） -->
+    <div id="briefingView" class="briefing-view" hidden>
+      <div class="briefing-meta">
+        <span id="briefingDate" class="b-date"></span>
+        <span id="briefingPushStatus" class="b-push"></span>
+        <span id="briefingCalls" class="b-calls"></span>
+      </div>
+      <div id="briefingContent" class="briefing-content"></div>
     </div>
+    <div id="briefingEmpty" class="briefing-empty">尚无今日简报，点击上方按钮生成</div>
+
+    <!-- Agent 思考过程（可折叠，默认收起，用户自行决定看不看） -->
+    <details class="think-details" id="thinkDetails" hidden>
+      <summary>查看 Agent 思考过程（终端日志）</summary>
+      <div class="log-area">
+        <div class="log-header">
+          <span class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></span>
+          <span class="title">agent · ReAct loop</span>
+          <span class="live" id="liveTag">streaming</span>
+        </div>
+        <div id="logList"></div>
+      </div>
+    </details>
   </section>
 
   <section class="card" id="listCard" hidden>

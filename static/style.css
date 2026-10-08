@@ -13,7 +13,20 @@
   --error: #c62828;
   --finish: #f9a825;
   --shadow: 0 1px 3px rgba(0,0,0,.08);
+  /* 终端日志配色（深蓝黑背景，呼应主蓝色调） */
+  --term-bg: #0d1b2a;
+  --term-fg: #e0e6ed;
+  --term-thought: #9ec5fe;
+  --term-action: #ffd166;
+  --term-tool: #ffe082;
+  --term-ok: #80d8a8;
+  --term-err: #ff8a80;
+  --term-finish: #b5e8cd;
+  --term-muted: #7d8da3;
 }
+
+/* 修复：HTML hidden 属性被 display:flex 等覆盖导致模态框关不掉 */
+[hidden] { display: none !important; }
 
 * { box-sizing: border-box; }
 body {
@@ -100,38 +113,202 @@ button.danger:hover { background: #b71c1c; }
 .chip .x { cursor: pointer; font-weight: 700; }
 .chip .x:hover { color: var(--error); }
 
-.log-area { margin-top: 16px; border-top: 1px dashed var(--border); padding-top: 12px; }
-.log-title { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
-#logList { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
+/* ===== 终端日志区（ReAct 思考过程实时流） ===== */
+.log-area {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.log-header {
+  background: #1a2a3a;
+  color: var(--term-fg);
+  padding: 8px 14px;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #2a3a4a;
+}
+.log-header .dots { display: inline-flex; gap: 6px; }
+.log-header .dots span { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.log-header .dots .r { background: #ff5f56; }
+.log-header .dots .y { background: #ffbd2e; }
+.log-header .dots .g { background: #27c93f; }
+.log-header .title { font-family: "Consolas", "Menlo", monospace; opacity: .85; }
+.log-header .live {
+  font-size: 11px; color: var(--term-finish);
+  display: none;
+}
+.log-header .live.show { display: inline; }
+.log-header .live::before {
+  content: '●'; margin-right: 4px; color: #ff5f56;
+  animation: blink 1s steps(1) infinite;
+}
 
-.step-card {
-  border-left: 3px solid var(--border);
-  padding: 8px 12px;
+#logList {
+  background: var(--term-bg);
+  color: var(--term-fg);
+  font-family: "JetBrains Mono", "Consolas", "Menlo", "Cascadia Code", monospace;
+  font-size: 13px;
+  line-height: 1.65;
+  padding: 14px 16px;
+  max-height: 520px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+#logList::-webkit-scrollbar { width: 8px; }
+#logList::-webkit-scrollbar-track { background: transparent; }
+#logList::-webkit-scrollbar-thumb { background: #2a3a4a; border-radius: 4px; }
+
+.term-line {
+  padding: 4px 0 4px 10px;
+  margin: 0;
+  border-left: 2px solid #2a3a4a;
+  animation: term-in .22s ease-out;
+  display: block;
+}
+@keyframes term-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.term-line:last-child::after {
+  content: '▊';
+  color: var(--term-action);
+  animation: blink 1s steps(1) infinite;
+  margin-left: 4px;
+  font-size: 12px;
+}
+.term-line.thought { color: var(--term-thought); font-style: italic; border-left-color: var(--primary); }
+.term-line.action  { color: var(--term-action); border-left-color: var(--finish); }
+.term-line.observation { color: var(--term-fg); border-left-color: var(--term-ok); }
+.term-line.observation.error { color: var(--term-err); border-left-color: var(--error); background: rgba(198,40,40,.08); }
+.term-line.finish  { color: var(--term-finish); border-left-color: #4caf50; background: rgba(76,175,80,.10); font-weight: 500; }
+.term-line.error    { color: var(--term-err); border-left-color: var(--error); background: rgba(198,40,40,.10); }
+
+.term-line .ico { margin-right: 6px; }
+.term-line .lbl { font-weight: 600; margin-right: 6px; opacity: .9; }
+.term-line .tool { color: var(--term-tool); font-weight: 600; margin-right: 6px; }
+.term-line .dur { color: var(--term-muted); font-size: 11px; margin-left: 6px; }
+.term-line .err-detail { color: var(--term-err); margin-top: 4px; font-size: 12px; }
+
+.term-line details { margin: 4px 0 4px 18px; }
+.term-line details summary {
+  color: var(--term-thought);
+  cursor: pointer;
+  font-size: 12px;
+  opacity: .85;
+  list-style: none;
+}
+.term-line details summary::-webkit-details-marker { display: none; }
+.term-line details summary::before { content: '▸ '; }
+.term-line details[open] summary::before { content: '▾ '; }
+.term-line details pre {
+  background: rgba(0,0,0,.30);
+  padding: 8px 10px;
+  border-radius: 4px;
+  margin: 4px 0;
+  overflow-x: auto;
+  font-size: 12px;
+  color: var(--term-fg);
+  border-left: 2px solid #2a3a4a;
+}
+.term-line code { color: var(--term-fg); font-family: inherit; }
+.term-line .obs-text { color: var(--term-ok); }
+
+/* 模态框内的思考过程回看也走终端样式（浅色变体，保持可读） */
+#thinkBody.term-lookback {
+  background: var(--term-bg);
+  color: var(--term-fg);
+  font-family: "JetBrains Mono", "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  padding: 14px 16px;
+}
+#thinkBody .term-line:last-child::after { content: ''; animation: none; }
+
+/* ===== 生成区：今日简报 + 折叠思考过程 ===== */
+.briefing-view {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+.briefing-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #f0f7ff;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+.briefing-meta .b-date { font-weight: 600; color: var(--primary); }
+.briefing-meta .b-calls { color: var(--muted); font-size: 12px; }
+.briefing-content {
+  padding: 20px 24px;
+  max-height: 560px;
+  overflow-y: auto;
+  line-height: 1.7;
+}
+.briefing-content h1, .briefing-content h2, .briefing-content h3 { color: var(--primary); margin: 16px 0 8px; }
+.briefing-content h1 { font-size: 20px; }
+.briefing-content h2 { font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+.briefing-content h3 { font-size: 14px; }
+.briefing-content a { color: var(--primary); word-break: break-all; }
+.briefing-content ul { padding-left: 20px; }
+.briefing-content li { margin: 4px 0; }
+.briefing-content blockquote {
+  border-left: 3px solid var(--primary);
+  margin: 8px 0;
+  padding: 4px 12px;
+  color: var(--muted);
+  background: #f5f9ff;
+}
+
+.briefing-empty {
+  margin-top: 16px;
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--muted);
   background: #fafbfc;
-  border-radius: 0 6px 6px 0;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
   font-size: 13px;
 }
-.step-card.thought { border-left-color: var(--thought); }
-.step-card.action { border-left-color: var(--action); }
-.step-card.observation { border-left-color: var(--observation); }
-.step-card.error { border-left-color: var(--error); background: #fff5f5; }
-.step-card.finish { border-left-color: var(--finish); background: #fffdf5; }
-.step-card .tag {
-  display: inline-block;
-  font-size: 11px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 3px;
-  margin-right: 6px;
-  color: #fff;
+
+/* 折叠的思考过程区（details/summary） */
+.think-details {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
 }
-.step-card.thought .tag { background: var(--thought); }
-.step-card.action .tag { background: var(--action); }
-.step-card.observation .tag { background: var(--observation); }
-.step-card.error .tag { background: var(--error); }
-.step-card.finish .tag { background: var(--finish); color: #5d4037; }
-.step-card .step-no { color: var(--muted); margin-right: 6px; font-variant-numeric: tabular-nums; }
-.step-card .content { display: block; margin-top: 4px; white-space: pre-wrap; word-break: break-word; color: var(--text); }
+.think-details > summary {
+  padding: 10px 16px;
+  background: #1a2a3a;
+  color: var(--term-fg);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: "Consolas", "Menlo", monospace;
+  list-style: none;
+  user-select: none;
+}
+.think-details > summary::-webkit-details-marker { display: none; }
+.think-details > summary::before { content: '▸ '; color: var(--term-action); }
+.think-details[open] > summary::before { content: '▾ '; }
+.think-details > summary:hover { background: #233444; }
+.think-details .log-area {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+}
+.think-details .log-header { display: none; }  /* 折叠后顶部 macOS 圆点隐藏，summary 已够 */
 
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid var(--border); }

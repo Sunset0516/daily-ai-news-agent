@@ -47,10 +47,13 @@ async function createUser() {
   const webhook = el('userWebhook').value.trim();
   if (!name) { alert('请填姓名'); return; }
   try {
-    await api('POST', '/api/users', { name, feishu_webhook: webhook || null });
+    const u = await api('POST', '/api/users', { name, feishu_webhook: webhook || null });
     el('userName').value = '';
     el('userWebhook').value = '';
     await loadUsers();
+    // 自动选中刚创建的用户，立即展开偏好/生成/历史区，避免用户再手动选
+    el('userSelect').value = u.user_id;
+    await selectUser();
   } catch (e) { alert('创建失败: ' + e.message); }
 }
 
@@ -75,6 +78,7 @@ async function selectUser() {
   el('editWebhook').value = currentUser.feishu_webhook || '';
   await loadPrefs(id);
   await loadBriefings(id);
+  await loadTodayBriefing();  // 切换用户时展示今日已有简报（若有）
 }
 
 async function updateUser() {
@@ -134,13 +138,30 @@ async function removePref(prefId) {
 // ---------- 生成简报（SSE 流式）----------
 async function generateBriefing() {
   if (!currentUser) return;
+  // 预检：必须有订阅偏好，否则后端会 400 直接失败
+  let prefs = [];
+  try {
+    prefs = await api('GET', `/api/users/${currentUser.user_id}/preferences`);
+  } catch (e) { /* 忽略，下面后端会再报 */ }
+  if (!prefs.length) {
+    alert('请先添加订阅偏好（话题或关键词），再生成简报');
+    el('prefValue').focus();
+    return;
+  }
   el('genBtn').disabled = true;
-  el('thinkLog').hidden = false;
+  // 思考过程区显示（折叠态，用户可自行展开），清空旧日志
+  el('thinkDetails').hidden = false;
+  el('thinkDetails').open = false;  // 默认收起
+  el('liveTag').classList.add('show');
   el('logList').innerHTML = '';
+  // 简报区显示加载态
+  el('briefingView').hidden = true;
+  el('briefingEmpty').hidden = false;
+  el('briefingEmpty').textContent = '生成中... Agent 正在按你的订阅话题搜集新闻，可展开下方"思考过程"查看实时日志';
 
-  // 渲染起始提示
-  appendStep({ step: 0, type: 'thought', content: '开始生成，调用 LLM...' });
+  appendStep({ step: 0, type: 'thought', content: '启动 ReAct agent，开始生成今日 AI 新闻简报...' });
 
+  let lastFinish = null;
   try {
     const resp = await fetch(`/api/users/${currentUser.user_id}/briefings/generate`, { method: 'POST' });
     if (!resp.ok) {
@@ -162,45 +183,123 @@ async function generateBriefing() {
           try {
             const ev = JSON.parse(chunk.slice(6));
             appendStep(ev);
+            if (ev.type === 'finish') lastFinish = ev;
           } catch (e) { /* skip */ }
         }
       }
     }
+    // finish 后拉取简报渲染到简报区
+    if (lastFinish && lastFinish.briefing_id) {
+      await renderTodayBriefing(lastFinish.briefing_id);
+    } else {
+      await loadTodayBriefing();
+    }
     await loadBriefings(currentUser.user_id);
   } catch (e) {
     appendStep({ step: 0, type: 'error', content: '生成失败: ' + e.message });
+    el('briefingEmpty').textContent = '生成失败: ' + e.message;
   } finally {
+    el('liveTag').classList.remove('show');
     el('genBtn').disabled = false;
   }
 }
 
+// 渲染指定简报到生成区的"今日简报"区
+async function renderTodayBriefing(briefingId) {
+  const b = await api('GET', `/api/briefings/${briefingId}`);
+  el('briefingDate').textContent = b.briefing_date;
+  el('briefingPushStatus').innerHTML = b.feishu_pushed
+    ? '<span class="badge ok">已推送飞书</span>'
+    : '<span class="badge fail">仅本地</span>';
+  el('briefingCalls').textContent = `工具调用 ${b.tool_call_count} 次`;
+  el('briefingContent').innerHTML = marked.parse(b.markdown_content || '(空)');
+  el('briefingView').hidden = false;
+  el('briefingEmpty').hidden = true;
+}
+
+// 从历史列表找今天的简报渲染（selectUser 切换用户时调用）
+async function loadTodayBriefing() {
+  if (!currentUser) return;
+  let list = [];
+  try { list = await api('GET', `/api/users/${currentUser.user_id}/briefings`); } catch {}
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const todayBrief = list.find(b => b.briefing_date === todayIso);
+  if (todayBrief) {
+    await renderTodayBriefing(todayBrief.briefing_id);
+  } else {
+    el('briefingView').hidden = true;
+    el('briefingEmpty').hidden = false;
+    el('briefingEmpty').textContent = '尚无今日简报，点击上方按钮生成';
+  }
+}
+
+// 把任意 input（dict 或 string）转成可显示的 JSON 字符串
+function stringifyInput(input) {
+  if (input == null) return '{}';
+  if (typeof input === 'string') {
+    try { return JSON.stringify(JSON.parse(input), null, 2); } catch { return input; }
+  }
+  try { return JSON.stringify(input, null, 2); } catch { return String(input); }
+}
+
+// 终端日志风格渲染：💡思考 / 🔧调用 / ✅结果 / 🔴报错 / 🏁完成
 function appendStep(ev) {
   const list = el('logList');
-  const card = document.createElement('div');
-  let cls = 'step-card ' + (ev.type || '');
-  if (ev.type === 'finish') cls = 'step-card finish';
-  let tag = ev.type || '';
-  let body = '';
-  if (ev.type === 'action') {
-    body = `工具: ${esc(ev.tool)}\n输入: ${esc(ev.input)}`;
-  } else if (ev.type === 'observation') {
-    body = `${ev.tool ? '[' + esc(ev.tool) + '] ' : ''}${esc(ev.content)}`;
-    // 推送失败标红
-    if (typeof ev.content === 'string' && ev.content.startsWith('ERROR')) cls = 'step-card error';
-  } else if (ev.type === 'finish') {
-    const pushed = ev.feishu_pushed ? '✅ 已推送飞书' : '⚠ 仅本地（推送失败）';
-    body = `${pushed}\n文件: ${esc(ev.file_path || '(无)')}\n工具调用次数: ${ev.tool_call_count}`;
-    if (ev.push_error) body += `\n失败原因: ${esc(ev.push_error)}`;
-    if (ev.briefing_id) body += `\n简报 ID: ${ev.briefing_id}`;
-  } else if (ev.type === 'error') {
-    body = esc(ev.content);
-  } else {
-    body = esc(ev.content);
-  }
-  card.className = cls;
-  card.innerHTML = `<span class="step-no">#${ev.step}</span><span class="tag">${esc(tag)}</span><span class="content">${body}</span>`;
-  list.appendChild(card);
+  list.appendChild(renderTermLine(ev));
   list.scrollTop = list.scrollHeight;
+}
+
+// 渲染单条事件为 DOM 节点（实时流和回看共用，兼容旧格式 agent_log）
+function renderTermLine(ev) {
+  const line = document.createElement('div');
+  const type = ev.type || 'thought';
+  let cls = 'term-line ' + type;
+
+  let html = '';
+  if (type === 'thought') {
+    html = `<span class="ico">💡</span><span class="lbl">[思考]</span><span class="text">${esc(ev.content)}</span>`;
+  } else if (type === 'action') {
+    const argsStr = stringifyInput(ev.input);
+    const needFold = argsStr.length > 80 || argsStr.includes('\n');
+    let argsHtml;
+    if (needFold) {
+      argsHtml = `<details><summary>参数</summary><pre><code>${esc(argsStr)}</code></pre></details>`;
+    } else {
+      argsHtml = `<code class="args-inline">(${esc(argsStr)})</code>`;
+    }
+    html = `<span class="ico">🔧</span><span class="lbl">[调用]</span><span class="tool">${esc(ev.tool)}</span>${argsHtml}`;
+  } else if (type === 'observation') {
+    const content = String(ev.content ?? '');
+    const isError = (ev.status === 'error') || (content.startsWith('ERROR'));
+    if (isError) cls = 'term-line observation error';
+    const ico = isError ? '🔴' : '✅';
+    const lbl = isError ? '[报错]' : '[结果]';
+    const dur = (ev.duration_ms != null)
+      ? ` <span class="dur">(${(ev.duration_ms / 1000).toFixed(2)}s)</span>` : '';
+    const tool = ev.tool ? `<span class="tool">${esc(ev.tool)}</span>` : '';
+    const needFold = content.length > 160 || content.includes('\n');
+    let body;
+    if (needFold) {
+      const preview = content.slice(0, 120).replace(/\n/g, ' ');
+      body = `<details><summary><code>${esc(preview)}…</code></summary><pre><code>${esc(content)}</code></pre></details>`;
+    } else {
+      body = `<code class="obs-text">${esc(content)}</code>`;
+    }
+    html = `<span class="ico">${ico}</span><span class="lbl">${lbl}</span>${tool}${dur}${body}`;
+  } else if (type === 'finish') {
+    const ok = ev.feishu_pushed;
+    const head = ok ? '🟢 已推送飞书' : '🟡 仅本地（推送失败或未配 webhook）';
+    html = `<span class="ico">🏁</span><span class="lbl">[完成]</span><span class="text">${head} · 文件: ${esc(ev.file_path || '(无)')} · 工具调用 ${ev.tool_call_count} 次</span>`;
+    if (ev.push_error) html += `<div class="err-detail">失败原因: ${esc(ev.push_error)}</div>`;
+    if (ev.briefing_id) html += `<div class="dur">简报 ID: ${ev.briefing_id}</div>`;
+  } else if (type === 'error') {
+    html = `<span class="ico">🔴</span><span class="lbl">[错误]</span><span class="text">${esc(ev.content)}</span>`;
+  } else {
+    html = `<span class="ico">•</span><span class="text">${esc(ev.content)}</span>`;
+  }
+  line.className = cls;
+  line.innerHTML = html;
+  return line;
 }
 
 // ---------- 简报列表 + 详情 ----------
@@ -221,21 +320,16 @@ async function showBriefing(id) {
   const b = await api('GET', `/api/briefings/${id}`);
   el('detailTitle').textContent = b.title;
   el('briefingBody').innerHTML = marked.parse(b.markdown_content || '(空)');
-  // 思考过程回看
+  // 思考过程回看（终端样式，复用 renderTermLine，兼容旧格式事件）
   const log = b.agent_log || [];
-  el('thinkBody').innerHTML = log.map(ev => {
-    let cls = 'step-card ' + (ev.type || '');
-    if (ev.type === 'finish') cls = 'step-card finish';
-    let body = '';
-    if (ev.type === 'action') body = `工具: ${esc(ev.tool)}<br>输入: ${esc(ev.input)}`;
-    else if (ev.type === 'observation') {
-      body = `${ev.tool ? '[' + esc(ev.tool) + '] ' : ''}${esc(ev.content)}`;
-      if (typeof ev.content === 'string' && ev.content.startsWith('ERROR')) cls = 'step-card error';
-    } else if (ev.type === 'finish') {
-      body = `飞书: ${ev.feishu_pushed ? '已推送' : '未推送'}<br>文件: ${esc(ev.file_path)}<br>调用次数: ${ev.tool_call_count}`;
-    } else body = esc(ev.content);
-    return `<div class="${cls}"><span class="step-no">#${ev.step}</span><span class="tag">${esc(ev.type)}</span><span class="content">${body}</span></div>`;
-  }).join('') || '<div class="muted">无思考过程记录</div>';
+  const tb = el('thinkBody');
+  tb.classList.add('term-lookback');
+  tb.innerHTML = '';
+  if (log.length) {
+    log.forEach(ev => tb.appendChild(renderTermLine(ev)));
+  } else {
+    tb.innerHTML = '<div class="muted">无思考过程记录</div>';
+  }
   showTab('briefing');
   el('detailModal').hidden = false;
 }
