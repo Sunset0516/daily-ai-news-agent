@@ -100,6 +100,12 @@ async def health():
     }
 
 
+# /health 作为 /api/health 的别名，方便 Docker HEALTHCHECK / K8s 探针（标准路径）
+@app.get("/health")
+async def health_alias():
+    return await health()
+
+
 # ---------- 用户 ----------
 
 @app.post("/api/users")
