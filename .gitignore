@@ -33,3 +33,6 @@ Thumbs.db
 # 日志
 *.log
 logs/
+
+# TRAE 工具产物
+.trae/
