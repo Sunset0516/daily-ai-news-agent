@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>每日 AI 新闻助手</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="title">每日 AI 新闻助手</div>
+  <div class="sched" id="schedCard">
+    <span class="dot" id="schedDot"></span>
+    <span id="schedText">调度状态加载中...</span>
+  </div>
+</header>
+
+<main class="container">
+  <section class="card">
+    <h2>用户管理</h2>
+    <div class="row">
+      <input id="userName" placeholder="姓名">
+      <input id="userWebhook" placeholder="飞书 webhook URL（可选，运行时填）">
+      <button onclick="createUser()">创建用户</button>
+    </div>
+    <div class="row">
+      <label>选择用户：</label>
+      <select id="userSelect" onchange="selectUser()"><option value="">-- 选择用户 --</option></select>
+      <button onclick="deleteUser()" class="danger" id="delUserBtn" hidden>删除该用户</button>
+    </div>
+    <div id="userWebhookEdit" class="row" hidden>
+      <input id="editWebhook" placeholder="更新飞书 webhook URL">
+      <button onclick="updateWebhook()">更新</button>
+    </div>
+  </section>
+
+  <section class="card" id="prefCard" hidden>
+    <h2>订阅偏好 <span id="prefUserLabel" class="muted"></span></h2>
+    <div class="row">
+      <select id="prefType">
+        <option value="topic">话题 topic</option>
+        <option value="keyword">关键词 keyword</option>
+      </select>
+      <input id="prefValue" placeholder="如 LLM Agent / DeepSeek / RAG">
+      <button onclick="addPref()">添加</button>
+    </div>
+    <div class="chips" id="prefChips"></div>
+  </section>
+
+  <section class="card" id="genCard" hidden>
+    <h2>生成简报</h2>
+    <button id="genBtn" onclick="generateBriefing()">立即生成今日简报</button>
+    <div class="log-area" id="thinkLog" hidden>
+      <div class="log-title">思考过程（实时）</div>
+      <div id="logList"></div>
+    </div>
+  </section>
+
+  <section class="card" id="listCard" hidden>
+    <h2>历史简报</h2>
+    <table id="briefingTable">
+      <thead><tr><th>日期</th><th>标题</th><th>飞书推送</th><th>工具调用</th><th>操作</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+</main>
+
+<div class="modal" id="detailModal" hidden>
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="detailTitle">简报详情</h2>
+      <button class="close-btn" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="tab active" data-tab="briefing" onclick="showTab('briefing')">简报</button>
+      <button class="tab" data-tab="think" onclick="showTab('think')">思考过程回看</button>
+    </div>
+    <div id="briefingBody" class="modal-body"></div>
+    <div id="thinkBody" class="modal-body" hidden></div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
