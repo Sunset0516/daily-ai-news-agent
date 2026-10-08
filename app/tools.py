@@ -9,6 +9,7 @@
 - search_web 用 Tavily，是新闻唯一合法来源。
 - push_to_feishu 失败返回 ERROR，由 LLM 决定重试或回退本地文件。
 """
+import logging
 import re
 import subprocess
 from pathlib import Path
@@ -197,18 +198,30 @@ def push_to_feishu(webhook_url: str, content: str) -> str:
         "msg_type": "text",
         "content": {"text": payload_text},
     }
+    log = logging.getLogger(__name__)
     try:
         resp = requests.post(webhook_url, json=payload, timeout=8)
         if resp.status_code != 200:
+            log.warning("feishu push http error",
+                        extra={"tool": "push_to_feishu", "status": "http_error",
+                               "duration_ms": "n/a"})
             return f"ERROR: HTTP {resp.status_code}, consider retry once or fall back to local file"
         data = resp.json()
         # 飞书成功响应 StatusCode=0 或 code=0
         if data.get("StatusCode", 0) != 0 and data.get("code", 0) != 0:
+            log.warning("feishu rejected payload",
+                        extra={"tool": "push_to_feishu", "status": "rejected"})
             return f"ERROR: feishu rejected: {data}"
+        log.info("feishu pushed ok",
+                 extra={"tool": "push_to_feishu", "status": "ok"})
         return "OK: pushed"
     except requests.Timeout:
+        log.warning("feishu push timeout",
+                    extra={"tool": "push_to_feishu", "status": "timeout"})
         return "ERROR: timeout (8s), consider retry once or fall back to local file"
     except Exception as e:
+        log.warning("feishu push exception",
+                    extra={"tool": "push_to_feishu", "status": "exception", "msg": str(e)})
         return f"ERROR: push failed: {e}, consider fall back to local file"
 
 

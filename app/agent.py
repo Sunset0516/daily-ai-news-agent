@@ -10,7 +10,9 @@
 """
 import asyncio
 import json
+import logging
 import re
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import AsyncGenerator, Optional
@@ -109,15 +111,27 @@ def _build_input(user: dict, preferences: list) -> dict:
 
 
 def _parse_finish(text: str) -> tuple:
-    """从 agent 最终输出解析推送状态。返回 (feishu_pushed, push_error)。"""
+    """从 agent 最终输出解析推送状态。返回 (feishu_pushed, push_error)。
+
+    支持的 FINISH 格式：
+    - "FINISH: pushed"                                  → (1, None)
+    - "FINISH: local only, push failed: <原因>"         → (0, "<原因>")
+    - "FINISH: local only, push skipped: <原因>"        → (0, "<原因>")
+    - "FINISH: local only"                               → (0, "local only (no webhook or push failed)")
+    """
     if not text:
         return 0, "no final output"
     low = text.lower()
-    if "local only" in low or "push failed" in low or "push_error" in low:
-        m = re.search(r"push failed[:\s]*(.+?)(\n|$)", text, re.IGNORECASE)
-        err = m.group(1).strip() if m else "push failed"
-        return 0, err[:200]
-    if "pushed" in low:
+    # 先尝试提取显式原因（push failed / push skipped / push error 后跟的内容）
+    m = re.search(r"push (?:failed|skipped|error)[:\s]*([^\n]+)", text, re.IGNORECASE)
+    if m:
+        return 0, m.group(1).strip()[:200]
+    if "local only" in low:
+        m = re.search(r"local only[,:]\s*([^\n]+)", text, re.IGNORECASE)
+        if m:
+            return 0, m.group(1).strip()[:200]
+        return 0, "local only (no webhook or push failed)"
+    if "pushed" in low and "not pushed" not in low:
         return 1, None
     return 0, "unknown finish status"
 
@@ -155,14 +169,20 @@ def _extract_briefing_fields(final_text: str, user: dict, file_path: str,
     }
 
 
-def _process_message(msg, step: int, tool_call_count: int, file_path: str):
+def _process_message(msg, step: int, tool_call_count: int, file_path: str,
+                     pending: Optional[dict] = None):
     """处理单条消息，返回 (events, new_step, new_tool_call_count, new_file_path, is_final)。
 
-    事件结构：
-    - thought: {step, type:"thought", content}
-    - action: {step, type:"action", tool, input}
-    - observation: {step, type:"observation", tool, content}
+    事件结构（v2 终端日志版，供前端按 💡/🔧/✅/🔴/🏁 渲染）：
+    - thought:     {step, type:"thought", content}
+    - action:      {step, type:"action", tool, input(dict), tool_call_id, started_at}
+    - observation: {step, type:"observation", tool, content, duration_ms, status}
+    - finish:      {step, type:"finish", ...}（run_briefing_stream 末尾组装）
+
+    pending: {tool_call_id -> started_at_monotonic} 用于配对 action/observation 算耗时。
     """
+    if pending is None:
+        pending = {}
     events = []
     is_final = False
     if isinstance(msg, AIMessage):
@@ -173,10 +193,14 @@ def _process_message(msg, step: int, tool_call_count: int, file_path: str):
             for tc in msg.tool_calls:
                 step += 1
                 tool_call_count += 1
+                tc_id = tc.get("id") or tc.get("name", "") or str(step)
+                pending[tc_id] = time.monotonic()
                 events.append({
                     "step": step, "type": "action",
                     "tool": tc.get("name", ""),
-                    "input": json.dumps(tc.get("args", {}), ensure_ascii=False),
+                    "input": tc.get("args", {}) or {},
+                    "tool_call_id": tc_id,
+                    "started_at": datetime.now().isoformat(timespec="seconds"),
                 })
         else:
             # AIMessage 无 tool_calls 且有 content → 最终回复
@@ -184,9 +208,16 @@ def _process_message(msg, step: int, tool_call_count: int, file_path: str):
     elif isinstance(msg, ToolMessage):
         step += 1
         content = msg.content if isinstance(msg.content, str) else str(msg.content)
+        tc_id = getattr(msg, "tool_call_id", None) or ""
+        started = pending.pop(tc_id, None)
+        duration_ms = int((time.monotonic() - started) * 1000) if started is not None else None
+        is_error = isinstance(content, str) and content.startswith("ERROR")
         events.append({
             "step": step, "type": "observation",
             "tool": msg.name, "content": content[:2000],
+            "duration_ms": duration_ms,
+            "status": "error" if is_error else "success",
+            "tool_call_id": tc_id,
         })
         if msg.name == "write_file" and "OK: wrote" in str(content):
             m = re.search(r"wrote (\S+)", content)
@@ -207,6 +238,7 @@ async def run_briefing_stream(user: dict, preferences: list) -> AsyncGenerator:
     inputs = _build_input(user, preferences)
     agent_log = []
     seen_ids = set()
+    pending_actions = {}  # tool_call_id -> started_at_monotonic，配对 action/observation 算耗时
     step = 0
     tool_call_count = 0
     final_text = ""
@@ -220,21 +252,38 @@ async def run_briefing_stream(user: dict, preferences: list) -> AsyncGenerator:
                 continue
             seen_ids.add(msg_id)
             events, step, tool_call_count, file_path, is_final = _process_message(
-                msg, step, tool_call_count, file_path)
+                msg, step, tool_call_count, file_path, pending_actions)
             for ev in events:
                 agent_log.append(ev)
                 yield ev
             if is_final and msg.content:
                 final_text = str(msg.content)
 
-    # 解析推送状态
+    # 解析推送状态（从 LLM 最终回复识别 pushed / local only / push failed|skipped）
     feishu_pushed, push_error = _parse_finish(final_text)
-    if not final_text and file_path:
-        final_text = _read_briefing_file(file_path)
+    # 关键：真正的简报 markdown 是 agent 调 write_file 写到本地文件里的，
+    # LLM 的 final_text 只是收尾陈词（如 "FINISH: local only..."），不是简报本身。
+    # 所以只要 file_path 有值，就优先读文件内容作为 markdown_content 存 DB / 推前端。
+    if file_path:
+        file_content = _read_briefing_file(file_path)
+        if file_content and not file_content.startswith("(读取简报文件失败"):
+            final_text = file_content
+    elif not final_text:
+        final_text = ""
 
     fields = _extract_briefing_fields(
         final_text, user, file_path, tool_call_count, feishu_pushed, push_error)
     briefing = save_briefing(agent_log=agent_log, **fields)
+
+    # 结构化日志：记录本次 agent 运行结果（生产观测用）
+    log = logging.getLogger(__name__)
+    log.info("agent run finished",
+             extra={"agent_run": "briefing", "user_id": user["user_id"],
+                    "tool_call_count": tool_call_count,
+                    "feishu_pushed": feishu_pushed,
+                    "push_error": push_error,
+                    "briefing_id": briefing["briefing_id"] if briefing else None,
+                    "status": "pushed" if feishu_pushed else "local_only"})
 
     yield {
         "step": step + 1, "type": "finish",

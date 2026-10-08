@@ -15,6 +15,7 @@ from pydantic import BaseModel
 
 from app.agent import run_briefing_stream
 from app.config import PROJECT_ROOT, settings
+from app.logging_config import setup_logging
 from app.db import (
     add_preference,
     create_user,
@@ -39,11 +40,16 @@ from app.scheduler import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期：startup 初始化 DB + 启动调度器；shutdown 关闭调度器。"""
+    """应用生命周期：startup 初始化日志 + DB + 调度器；shutdown 关闭调度器。"""
+    setup_logging()
+    log = __import__("logging").getLogger(__name__)
+    log.info("app starting", extra={"agent_run": "system", "status": "starting"})
     init_db()
     start_scheduler()
+    log.info("app ready", extra={"agent_run": "system", "status": "ready"})
     yield
     shutdown_scheduler()
+    log.info("app stopped", extra={"agent_run": "system", "status": "stopped"})
 
 
 app = FastAPI(title="每日 AI 新闻助手", lifespan=lifespan)
