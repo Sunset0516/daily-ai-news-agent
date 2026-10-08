@@ -199,10 +199,14 @@ async def run_briefing_stream(user: dict, preferences: list) -> AsyncGenerator:
     """流式运行 agent，yield 中间步骤事件（供 SSE 前端实时展示思考过程）。
 
     finish 事件包含 briefing_id/file_path/feishu_pushed/push_error/tool_call_count。
+
+    去重：stream_mode='values' 每个 chunk 返回累积的完整 messages 列表，
+    用 seen_ids 跟踪已处理消息，只处理新增的，避免历史消息重复计入。
     """
     agent = _build_agent()
     inputs = _build_input(user, preferences)
     agent_log = []
+    seen_ids = set()
     step = 0
     tool_call_count = 0
     final_text = ""
@@ -211,6 +215,10 @@ async def run_briefing_stream(user: dict, preferences: list) -> AsyncGenerator:
     async for chunk in agent.astream(inputs, stream_mode="values"):
         messages = chunk.get("messages", [])
         for msg in messages:
+            msg_id = getattr(msg, "id", None) or id(msg)
+            if msg_id in seen_ids:
+                continue
+            seen_ids.add(msg_id)
             events, step, tool_call_count, file_path, is_final = _process_message(
                 msg, step, tool_call_count, file_path)
             for ev in events:
