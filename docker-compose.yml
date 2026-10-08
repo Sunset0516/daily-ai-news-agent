@@ -1,0 +1,29 @@
+# 每日 AI 新闻助手 Agent — 一键部署
+# 用法：
+#   1. 复制 .env.example 为 .env，填入 DEEPSEEK_API_KEY 和 TAVILY_API_KEY
+#   2. docker compose up -d --build
+#   3. 访问 http://localhost:8000
+#   4. 看日志：docker compose logs -f
+#   5. 停止：docker compose down
+services:
+  agent:
+    build: .
+    container_name: daily-ai-news-agent
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - LOG_FORMAT=json
+    volumes:
+      # 简报文件持久化（容器重建不丢）
+      - ./briefings:/app/briefings
+      # SQLite 数据库持久化（用户/偏好/历史简报）
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

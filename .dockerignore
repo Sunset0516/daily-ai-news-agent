@@ -1,0 +1,31 @@
+# Docker 构建忽略（避免把本地环境/缓存打进镜像）
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+.git/
+.gitignore
+.env
+*.db
+*.sqlite
+*.log
+.idea/
+.vscode/
+.trae/
+# 测试和开发文件不进生产镜像
+tests/
+*_test*.py
+_e2e_test.py
+requirements-dev.txt
+README.md
+.dockerignore
+Dockerfile
+docker-compose.yml
+# 测试产物
+briefings/_test_unit.md
+briefings/_test_read.md
+briefings/_test_sub.md
