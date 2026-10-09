@@ -76,6 +76,12 @@ async function selectUser() {
   el('delUserBtn').hidden = false;
   el('userWebhookEdit').hidden = false;
   el('editWebhook').value = currentUser.feishu_webhook || '';
+  // 切换/删除用户时清空上一个用户的生成状态，避免思考日志/简报残留
+  el('logList').innerHTML = '';
+  el('thinkDetails').hidden = true;
+  el('thinkDetails').open = false;
+  el('liveTag').classList.remove('show');
+  el('genBtn').disabled = false;
   await loadPrefs(id);
   await loadBriefings(id);
   await loadTodayBriefing();  // 切换用户时展示今日已有简报（若有）
