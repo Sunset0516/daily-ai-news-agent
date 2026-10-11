@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>面试问答手册 · 每日 AI 新闻助手 Agent</title>
+<style>
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-light: #dbeafe;
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --text: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --border: #e2e8f0;
+  --accent: #f59e0b;
+  --success: #10b981;
+  --error: #ef4444;
+  --code-bg: #f1f5f9;
+  --code-text: #334155;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.04);
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,.08), 0 2px 4px -2px rgba(0,0,0,.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.06);
+}
+[data-theme="dark"] {
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --primary-light: #1e3a5f;
+  --bg: #0f172a;
+  --card: #1e293b;
+  --text: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border: #334155;
+  --accent: #fbbf24;
+  --code-bg: #0f172a;
+  --code-text: #e2e8f0;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
+  --shadow: 0 1px 3px rgba(0,0,0,.4);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,.5);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.8;
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  transition: background .3s, color .3s;
+}
+
+/* 顶部导航 */
+.top-bar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background .3s;
+}
+[data-theme="dark"] .top-bar { background: rgba(15, 23, 42, 0.85); }
+.top-bar .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; color: var(--text); }
+.top-bar .brand .logo {
+  width: 32px; height: 32px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 16px; font-weight: 700;
+}
+.top-bar .actions { display: flex; gap: 8px; align-items: center; }
+.top-bar button {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-secondary); padding: 6px 12px; border-radius: 6px;
+  cursor: pointer; font-size: 13px; transition: all .2s;
+}
+.top-bar button:hover { background: var(--code-bg); color: var(--text); }
+
+/* 主容器 */
+.layout { display: flex; max-width: 1280px; margin: 0 auto; padding: 32px 24px; gap: 32px; }
+.sidebar {
+  width: 260px; flex-shrink: 0;
+  position: sticky; top: 88px; align-self: flex-start;
+  max-height: calc(100vh - 100px); overflow-y: auto;
+}
+.sidebar h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin-bottom: 12px; font-weight: 600; }
+.sidebar a {
+  display: block; padding: 8px 12px; margin-bottom: 2px;
+  color: var(--text-secondary); text-decoration: none; border-radius: 6px;
+  font-size: 14px; transition: all .15s; border-left: 2px solid transparent;
+}
+.sidebar a:hover { background: var(--code-bg); color: var(--text); }
+.sidebar a.active { background: var(--primary-light); color: var(--primary); border-left-color: var(--primary); font-weight: 500; }
+.sidebar .nav-group { margin-bottom: 20px; }
+
+.content { flex: 1; min-width: 0; }
+
+/* Hero */
+.hero {
+  background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+  color: white; padding: 48px 40px; border-radius: 16px;
+  margin-bottom: 32px; position: relative; overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+.hero::before {
+  content: ''; position: absolute; top: -50%; right: -10%;
+  width: 300px; height: 300px; border-radius: 50%;
+  background: rgba(255,255,255,0.1); filter: blur(60px);
+}
+.hero h1 { font-size: 32px; font-weight: 700; margin-bottom: 12px; position: relative; }
+.hero .subtitle { font-size: 16px; opacity: 0.9; margin-bottom: 20px; position: relative; }
+.hero .badges { display: flex; gap: 8px; flex-wrap: wrap; position: relative; }
+.hero .badge {
+  background: rgba(255,255,255,0.2); backdrop-filter: blur(4px);
+  padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+/* 章节 */
+section {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 32px 36px; margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+section h2 {
+  font-size: 20px; font-weight: 700; color: var(--text);
+  margin-bottom: 24px; padding-bottom: 12px;
+  border-bottom: 2px solid var(--primary-light);
+  display: flex; align-items: center; gap: 10px;
+}
+section h2 .section-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--primary); color: white; font-size: 14px; font-weight: 700;
+}
+
+/* 问答 */
+.qa { margin-bottom: 24px; padding: 20px 24px; background: var(--bg); border-radius: 10px; border: 1px solid var(--border); }
+.qa:last-child { margin-bottom: 0; }
+.qa .q { font-weight: 600; color: var(--text); margin-bottom: 10px; display: flex; gap: 8px; align-items: flex-start; }
+.qa .q .q-icon { color: var(--primary); flex-shrink: 0; font-weight: 700; }
+.qa .q .q-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; height: 28px; padding: 0 8px;
+  background: var(--primary-light); color: var(--primary);
+  border-radius: 6px; font-size: 13px; font-weight: 700; flex-shrink: 0;
+}
+.qa .a {
+  color: var(--text-secondary); font-size: 14.5px;
+  padding-left: 0; position: relative;
+  background: var(--card); padding: 14px 18px; border-radius: 8px;
+  border-left: 3px solid var(--primary); margin-top: 12px;
+  line-height: 1.85;
+}
+.qa .a code {
+  background: var(--code-bg); color: var(--code-text);
+  padding: 2px 6px; border-radius: 4px; font-size: 13px;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+}
+
+/* 实战示例 */
+.example {
+  background: #0f172a; color: #e2e8f0; border-radius: 12px;
+  padding: 24px 28px; margin-bottom: 20px;
+  font-family: "JetBrains Mono", "Fira Code", Consolas, monospace;
+  font-size: 13.5px; line-height: 1.9;
+  box-shadow: var(--shadow-md);
+  border: 1px solid #1e293b;
+}
+[data-theme="dark"] .example { background: #020617; border-color: #1e293b; }
+.example .ex-title {
+  color: #ffd166; font-weight: 600; margin-bottom: 16px;
+  font-size: 14.5px; display: flex; align-items: center; gap: 8px;
+  padding-bottom: 12px; border-bottom: 1px solid #1e293b;
+}
+.example .step { margin-bottom: 10px; padding-left: 24px; position: relative; }
+.example .step:last-child { margin-bottom: 0; }
+.example .step::before {
+  position: absolute; left: 0; top: 2px; font-size: 14px;
+}
+.example .step.problem::before { content: '⚠️'; }
+.example .step.locate::before { content: '🔍'; }
+.example .step.solve::before { content: '✅'; }
+.example .step.think::before { content: '💡'; }
+.example .step .label { color: #ffd166; font-weight: 600; margin-right: 4px; }
+.example .step.problem .label { color: #ff8a80; }
+.example .step.locate .label { color: #9ec5fe; }
+.example .step.solve .label { color: #80d8a8; }
+.example .step.think .label { color: #ffd166; }
+
+/* 必背卡片 */
+.cheat-sheet {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 2px solid var(--accent); border-radius: 12px;
+  padding: 28px 32px; margin-bottom: 24px;
+  position: relative; overflow: hidden;
+}
+[data-theme="dark"] .cheat-sheet { background: linear-gradient(135deg, #422006, #78350f); border-color: #b45309; }
+.cheat-sheet::before {
+  content: '★'; position: absolute; top: 12px; right: 20px;
+  font-size: 48px; color: var(--accent); opacity: 0.3;
+}
+.cheat-sheet h2 { border-bottom-color: var(--accent); }
+.cheat-sheet ol { padding-left: 24px; }
+.cheat-sheet li { margin-bottom: 12px; font-size: 14.5px; color: var(--text); }
+.cheat-sheet li b { color: var(--primary); }
+.cheat-sheet .footer-note { margin-top: 16px; font-size: 13px; color: var(--text-muted); }
+
+/* 技巧表 */
+.tips-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+.tips-table th {
+  background: var(--primary-light); color: var(--primary);
+  font-weight: 600; text-align: left; padding: 12px 16px;
+  border-bottom: 2px solid var(--primary);
+}
+.tips-table td {
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.tips-table tr:last-child td { border-bottom: none; }
+.tips-table tr:hover td { background: var(--bg); }
+
+/* 返回顶部 */
+.back-top {
+  position: fixed; bottom: 32px; right: 32px;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: var(--primary); color: white; border: none;
+  cursor: pointer; font-size: 20px;
+  box-shadow: var(--shadow-lg);
+  opacity: 0; visibility: hidden;
+  transition: all .3s; z-index: 50;
+}
+.back-top.show { opacity: 1; visibility: visible; }
+.back-top:hover { background: var(--primary-dark); transform: translateY(-2px); }
+
+/* 页脚 */
+footer {
+  text-align: center; color: var(--text-muted);
+  font-size: 13px; padding: 40px 20px;
+  border-top: 1px solid var(--border); margin-top: 20px;
+}
+footer a { color: var(--primary); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+/* 响应式 */
+@media (max-width: 900px) {
+  .layout { flex-direction: column; padding: 16px; }
+  .sidebar {
+    position: static; width: 100%; max-height: none;
+    display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px;
+  }
+  .sidebar .nav-group { display: flex; gap: 4px; margin-bottom: 0; }
+  .sidebar h3 { display: none; }
+  .sidebar a { white-space: nowrap; border-left: none; border-bottom: 2px solid transparent; }
+  .sidebar a.active { border-left-color: transparent; border-bottom-color: var(--primary); }
+  section { padding: 20px; }
+  .hero { padding: 32px 24px; }
+  .hero h1 { font-size: 24px; }
+}
+
+/* 打印样式 */
+@media print {
+  .top-bar, .sidebar, .back-top, .hero .badges { display: none !important; }
+  .layout { padding: 0; gap: 0; }
+  section { break-inside: avoid; box-shadow: none; border: 1px solid #ccc; page-break-inside: avoid; }
+  .example { break-inside: avoid; page-break-inside: avoid; }
+  .qa { break-inside: avoid; page-break-inside: avoid; }
+  body { background: white; color: black; }
+  a { color: black; text-decoration: none; }
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<div class="top-bar">
+  <div class="brand">
+    <div class="logo">面</div>
+    <span>面试问答手册</span>
+  </div>
+  <div class="actions">
+    <button onclick="toggleTheme()" id="themeBtn">🌙 深色</button>
+    <button onclick="window.print()">📄 打印 / 导出 PDF</button>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- 侧边目录 -->
+  <aside class="sidebar">
+    <div class="nav-group">
+      <h3>核心架构</h3>
+      <a href="#section1">一、ReAct 与 Agent</a>
+      <a href="#section2">二、容错设计 ⭐</a>
+    </div>
+    <div class="nav-group">
+      <h3>工程实现</h3>
+      <a href="#section3">三、安全约束</a>
+      <a href="#section4">四、SSE 与前端</a>
+      <a href="#section5">五、存储与调度</a>
+    </div>
+    <div class="nav-group">
+      <h3>工程化</h3>
+      <a href="#section6">六、测试与部署</a>
+      <a href="#section7">七、开放题</a>
+    </div>
+    <div class="nav-group">
+      <h3>实战</h3>
+      <a href="#examples">踩坑实战</a>
+      <a href="#cheat">必背 5 件事</a>
+      <a href="#tips">口语技巧</a>
+    </div>
+  </aside>
+
+  <!-- 主内容 -->
+  <main class="content">
+
+    <!-- Hero -->
+    <div class="hero">
+      <h1>面试问答手册</h1>
+      <div class="subtitle">每日 AI 新闻助手 Agent — ReAct 循环驱动，LLM 自主决策工具调用，失败时感知错误并改变策略</div>
+      <div class="badges">
+        <span class="badge">🔗 github.com/Sunset0516/daily-ai-news-agent</span>
+        <span class="badge">🧪 41 单元测试</span>
+        <span class="badge">🐳 Docker 一键部署</span>
+        <span class="badge">🛡️ 容错闭环验证</span>
+      </div>
+    </div>
+
+    <!-- 一、ReAct -->
+    <section id="section1">
+      <h2><span class="section-num">1</span> ReAct 与 Agent 架构</h2>
+
+      <div class="qa"><div class="q"><span class="q-num">Q1</span> ReAct 是什么？你的项目怎么实现？</div>
+        <div class="a">ReAct 就是让大模型先想再做。它先思考"我要干嘛"，然后决定调哪个工具，拿到结果后再思考下一步，这么循环下去直到给出答案。我项目里用 LangGraph 的 <code>create_react_agent</code> 实现的，工具调几次、调什么顺序都是 DeepSeek 自己决定的，不是我写死的。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q2</span> 为什么用 LangGraph 不用自己写 while 循环？</div>
+        <div class="a">主要是它把 ReAct 的循环逻辑封装好了，我不用自己维护消息列表和退出条件。而且它原生支持流式输出，能实时把思考过程推给前端展示。自己写 while 循环要处理工具解析、异常、终止这些边界，容易出 bug。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q3</span> 怎么防止 Agent 死循环？</div>
+        <div class="a">两层兜底。一是 LangGraph 自带 <code>max_iterations</code> 参数，超过次数强制停。二是我在 system prompt 里要求 Agent 最后必须输出一个 FINISH 行，我的 <code>_parse_finish</code> 函数会解析这个行判定结束。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q4</span> Agent 怎么决定调哪个工具、传什么参数？</div>
+        <div class="a">我每个工具用 <code>@tool</code> 装饰，LangChain 自动把函数名、参数、描述提取出来塞到给 LLM 的 prompt 里。LLM 看完决定调哪个，输出一个 JSON 包含工具名和参数，框架解析后执行对应函数，返回值再喂回 LLM。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q5</span> 和普通 pipeline 有什么区别？</div>
+        <div class="a">pipeline 是写死的 search→write→push，if-else 顺序固定。我的项目里 Agent 搜几次、推不推、失败后重试还是回退，全看 LLM 当时的决策。同一段代码跑两次，工具调用顺序可能就不一样。这是 Agent 和脚本的本质区别。</div></div>
+    </section>
+
+    <!-- 二、容错 -->
+    <section id="section2">
+      <h2><span class="section-num">2</span> 容错与错误处理 <span style="color:var(--accent);font-size:14px;">⭐ 面试重点</span></h2>
+
+      <div class="qa"><div class="q"><span class="q-num">Q6</span> push_to_feishu 失败时 Agent 怎么处理？是硬编码重试吗？</div>
+        <div class="a">不是硬编码重试。我把 <code>push_to_feishu</code> 设计成 agent 工具，失败时不抛异常，返回一个 "ERROR: HTTP 405" 这样的字符串。LLM 读到这个 ERROR 后自己思考，它可能想"重试一次"，再调一次又失败，它就再想"回退本地文件吧"。我用无效 webhook 实测过，Agent 真的走了 ERROR→重试→又 ERROR→回退这条链。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q7</span> 为什么失败返回字符串不抛异常？</div>
+        <div class="a">这个很关键。抛异常的话程序直接中断了，LLM 拿不到 Observation 就没法做下一步决策。返回 ERROR 字符串，这个字符串会作为工具结果进入 LLM 下一轮的上下文，LLM 能读到具体错误是什么，从而决定重试还是换策略。这是让 LLM 具备"感知错误并改策略"能力的关键。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q8</span> DeepSeek 挂了怎么办？</div>
+        <div class="a">老实说目前 MVP 只接了 DeepSeek，没有 fallback。生产化我会加一个备用模型，比如 OpenAI 兼容的，在 <code>_build_agent</code> 里捕获连接异常后切换。另外 Tavily 搜索结果可以缓存，同关键词 1 小时内复用，减少外部依赖。这个我写在 README 的改进项里了。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q9</span> 所有渠道都失败，简报会丢吗？</div>
+        <div class="a">不会。Agent 第一步一定先调 <code>write_file</code> 把简报写到本地 briefings 文件夹，然后才尝试推飞书。飞书失败回退后，本地文件已经存在了。DB 里也存了一份 markdown_content，前端能直接拉 DB 渲染。本地文件是兜底，不会丢。</div></div>
+    </section>
+
+    <!-- 三、安全 -->
+    <section id="section3">
+      <h2><span class="section-num">3</span> 安全约束</h2>
+
+      <div class="qa"><div class="q"><span class="q-num">Q10</span> write_file 怎么防止 LLM 写恶意文件覆盖源码？</div>
+        <div class="a">双重校验。第一层，路径必须以 briefings/ 开头，不然直接拒绝。第二层，把路径 resolve 成绝对路径后，用 <code>Path.relative_to</code> 判断它是不是还在 briefings 文件夹下面。这样就算 LLM 输出 "briefings/../app/main.py"，前缀过了，但 resolve 后跑出 briefings 子树，第二层就拦住了。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q11</span> bash 工具怎么防危险命令？</div>
+        <div class="a">我维护了一个正则黑名单，包含 rm -rf、curl、wget、sudo、shutdown 这些。LLM 调 bash 工具时先匹配，命中就返回 "ERROR: command not allowed" 不执行。另外 bash 是 agent 工具，只有 LLM 主动调才执行，不是用户直接输入，风险可控。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q12</span> 密钥怎么管理？有没有硬编码？</div>
+        <div class="a">全走环境变量。<code>config.py</code> 用 <code>os.getenv</code> 读 DEEPSEEK_API_KEY 和 TAVILY_API_KEY。真实 key 存在 .env 文件里，这个文件被 gitignore 忽略不进仓库。仓库里只有 .env.example 模板，里面是空的。我扫过所有已追踪文件，没有真实 key 泄露。</div></div>
+    </section>
+
+    <!-- 四、SSE -->
+    <section id="section4">
+      <h2><span class="section-num">4</span> SSE 流式与前端</h2>
+
+      <div class="qa"><div class="q"><span class="q-num">Q13</span> 为什么用 SSE 不用 WebSocket？</div>
+        <div class="a">生成简报是单向的，服务端推事件给前端就行，前端不需要反向发消息。SSE 足够用，而且更轻量。WebSocket 是全双工，杀鸡用牛刀，还增加连接管理复杂度。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q14</span> EventSource 只支持 GET，你生成简报是 POST，怎么解决？</div>
+        <div class="a">EventSource 是浏览器原生 API，确实只支持 GET。但 SSE 协议本身支持 POST。所以我用 fetch 发 POST 请求，拿到 response.body 这个 ReadableStream，自己按 \n\n 分割事件，data: 开头的行 JSON.parse。这样既用了 SSE 格式又支持 POST 传 body。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q15</span> stream_mode 重复消息 bug 是怎么发现和修复的？</div>
+        <div class="a">第一次测试发现 tool_call_count 显示 109，明显不对。排查发现 langgraph 的 <code>stream_mode='values'</code> 每个 chunk 返回的是累积的完整消息列表，不是增量。我对每条消息都处理，历史消息被重复计入了。修复就是加了个 <code>seen_ids</code> 的 set，跟踪已处理消息的 id，只处理新增的。修完计数从 109 降到 10。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q16</span> 前端怎么展示思考过程？</div>
+        <div class="a">用终端日志风格。深蓝黑背景配等宽字体，每行带图标——💡是思考、🔧是工具调用、✅是结果、🔴是报错。工具调用显示耗时，Observation 超长自动折叠。这样面试官一眼就能看出 ReAct 循环在转，"模型因为报错改变策略"的决策链也清晰可见。</div></div>
+    </section>
+
+    <!-- 五、存储 -->
+    <section id="section5">
+      <h2><span class="section-num">5</span> 数据存储与调度</h2>
+
+      <div class="qa"><div class="q"><span class="q-num">Q17</span> SQLite 多线程写入怎么处理并发？</div>
+        <div class="a">用 <code>threading.Lock</code> 串行化所有写操作，每次操作短连接用完即关。另外开了 <code>PRAGMA journal_mode=WAL</code> 提升并发读性能。因为 APScheduler 在后台线程跑定时任务，FastAPI 请求在主线程，两者都要写 DB，必须加锁。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q18</span> 定时任务怎么实现？为什么用 APScheduler 不用 Celery？</div>
+        <div class="a">用 APScheduler 的 BackgroundScheduler，配 CronTrigger 从环境变量读 hour 和 minute，默认早上 8 点。在 FastAPI 的 lifespan startup 启动、shutdown 关闭。没用 Celery 是因为项目只有一个每日任务，Celery 要 Redis 中间件太重了。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q19</span> 怎么保证同一用户同一天不重复生成？</div>
+        <div class="a">briefings 表有 <code>UNIQUE(user_id, briefing_date)</code> 约束。<code>save_briefing</code> 用 INSERT ... ON CONFLICT DO UPDATE 做 UPSERT，同一天重复生成会覆盖而不是插入新行。这样前端拉历史列表不会看到两条今天的。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q20</span> 简报内容存在哪？</div>
+        <div class="a">双写。Agent 调 <code>write_file</code> 写到 briefings/YYYY-MM-DD.md 文件，这是本地兜底。同时 <code>save_briefing</code> 把 markdown_content 存 DB 的 briefings 表，前端直接从 DB 拉不用读文件。两个都有，文件防丢失，DB 方便查询。</div></div>
+    </section>
+
+    <!-- 六、测试 -->
+    <section id="section6">
+      <h2><span class="section-num">6</span> 测试与工程化</h2>
+
+      <div class="qa"><div class="q"><span class="q-num">Q21</span> 你的测试覆盖了什么？</div>
+        <div class="a">41 个单元测试分两类。tools 测试覆盖安全约束——write_file 路径越狱用例、bash denylist 10 条危险命令、push_to_feishu 6 个分支全 mock 了 requests。agent 测试覆盖 <code>_parse_finish</code> 的 8 个分支、文件读取越狱拦截、概述提取和截断。都是纯函数测试不打真实网络。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q22</span> Agent 端到端怎么测？</div>
+        <div class="a">用真 LLM 跑，因为核心价值就是看 LLM 的自主决策行为，mock 出来没意义。但我会配无效 webhook 专门触发容错路径，验证 ERROR→重试→回退这条链是否走通。纯函数比如 <code>_parse_finish</code> 用单元测试，agent_log 决策链用 e2e 验证。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q23</span> 结构化日志怎么设计的？</div>
+        <div class="a">JSON 格式单行输出，字段有 ts、level、logger、msg，extra 里带 agent_run、tool、duration_ms、status、tool_call_count、push_error 这些。生产方便 ELK 或 Loki 采集聚合错误。关键边界都打了日志——agent 跑完记 finish 带工具次数和推送状态，push 每个失败分支记 warning。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q24</span> Dockerfile 怎么做的？</div>
+        <div class="a">基础镜像是 python:3.10-slim。Dockerfile 分层缓存，先拷 requirements.txt 装依赖再拷代码，改代码不重装依赖。PYTHONUNBUFFERED=1 让日志实时输出。HEALTHCHECK 打 /health 接口。docker-compose 挂两个 volume——briefings 和 data 持久化简报和数据库，restart: unless-stopped 自动重启。</div></div>
+    </section>
+
+    <!-- 七、开放 -->
+    <section id="section7">
+      <h2><span class="section-num">7</span> 开放与设计问题</h2>
+
+      <div class="qa"><div class="q"><span class="q-num">Q25</span> 加新推送渠道怎么扩展？</div>
+        <div class="a">当前每渠道一个 @tool。更好的设计是重构成 <code>push_message(channel=...)</code> 单工具多渠道，channel 可以是 feishu、dingtalk、email。密钥存 DB 不进 LLM 上下文，避免泄露。LLM 只学一个工具签名，prompt 里告诉它"该用户配了 feishu 和 email"，它自己决定推哪个。某渠道失败返回 ERROR，LLM 还能换渠道重试，比硬编码 if-else 灵活。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q26</span> 最大技术难点是什么？</div>
+        <div class="a">两个。一是容错设计——让 LLM 通过 Observation 感知错误并自主决策重试或回退，关键是工具失败不能抛异常要返回 ERROR 字符串，这是和传统脚本最大的区别。二是流式数据去重——langgraph 的 stream_mode 返回累积消息，需要自己维护 seen_ids 去重，否则工具调用计数会爆炸式增长到 109。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q27</span> 项目有什么不足？</div>
+        <div class="a">几个点。一是没有跨天新闻去重，同一新闻可能连续两天进简报，我会加 news_hash 字段让 LLM 避开已报链接。二是没有成本控制，用户狂点生成会烧 token，我会加配额和节流。三是 DeepSeek 单点无 fallback。这些我都主动写在 README 的改进项里了。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q28</span> 如果重做这个项目，你会改什么？</div>
+        <div class="a">我会更早引入结构化日志和测试，而不是后期补。另外把推送渠道从一开始就设计成多渠道统一接口，而不是单工具。还有简报生成可以加缓存层，同一用户同一天重复生成直接返回缓存不重复调 LLM。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q29</span> 怎么验证容错真生效了？</div>
+        <div class="a">我用无效 webhook 跑了端到端测试，然后看 DB 里 agent_log 字段的决策链。它会显示：调 push_to_feishu → 返回 ERROR HTTP 405 → LLM Thought "retry once" → 再调 push_to_feishu → 又 ERROR → LLM Thought "重试仍失败回退本地文件" → FINISH local only。这条完整链路在 DB 里存着，可以复现。</div></div>
+
+      <div class="qa"><div class="q"><span class="q-num">Q30</span> 工具调用次数怎么统计？</div>
+        <div class="a">在 <code>_process_message</code> 函数里，遇到 ToolMessage 类型就 +1，最后存到 DB 的 tool_call_count 字段。前端简报头部会显示"工具调用 N 次"。之前因为流式去重 bug 计数到 109，修复后正常在 8 到 12 次左右。</div></div>
+    </section>
+
+    <!-- 实战示例 -->
+    <section id="examples">
+      <h2><span class="section-num">★</span> 实战示例：问题 → 定位 → 解决 → 思考</h2>
+
+      <div class="example">
+        <div class="ex-title">示例 1 · stream_mode 重复消息 bug（数字最有说服力）</div>
+        <div class="step problem"><span class="label">问题：</span>第一次端到端测试，tool_call_count 显示 109，明显不对，应该 10 左右。</div>
+        <div class="step locate"><span class="label">定位：</span>看 agent_log 有 256 条，发现 stream_mode='values' 每个 chunk 返回的是累积完整消息列表，历史消息被重复处理了。</div>
+        <div class="step solve"><span class="label">解决：</span>在 agent.py 加 seen_ids set，跟踪已处理消息 id，只处理新增的。修完计数降到 10。</div>
+        <div class="step think"><span class="label">思考：</span>流式累积数据的常见陷阱。用 updates 模式能拿增量但丢状态，还是 values + 去重更稳。</div>
+      </div>
+
+      <div class="example">
+        <div class="ex-title">示例 2 · push_to_feishu 容错（Agent vs 脚本的本质区别）</div>
+        <div class="step problem"><span class="label">问题：</span>飞书 webhook 可能无效或超时，直接抛异常 Agent 中断，简报就丢了。</div>
+        <div class="step locate"><span class="label">定位：</span>核心矛盾——LLM 怎么知道工具失败？只有拿到 Observation 才能决策。</div>
+        <div class="step solve"><span class="label">解决：</span>push_to_feishu 失败返回 ERROR 字符串（不抛异常），LLM 读到后自主决策重试或回退本地文件。</div>
+        <div class="step think"><span class="label">思考：</span>抛异常是程序员思维，返回 ERROR 是 LLM 思维——让 LLM 能感知错误才有自主决策的基础。</div>
+      </div>
+
+      <div class="example">
+        <div class="ex-title">示例 3 · write_file 路径越狱（双重校验防绕过）</div>
+        <div class="step problem"><span class="label">问题：</span>LLM 可能输出 ../../etc/passwd 或 app/main.py 覆盖源码。</div>
+        <div class="step locate"><span class="label">定位：</span>单一校验不够——前缀检查能被 briefings/../app/main.py 绕过。</div>
+        <div class="step solve"><span class="label">解决：</span>双重校验。第一层路径必须 briefings/ 开头；第二层 resolve 后 Path.relative_to 拦截 ../ 越狱。</div>
+        <div class="step think"><span class="label">思考：</span>正则匹配路径不可靠，resolve 后比较绝对路径是标准做法。</div>
+      </div>
+
+      <div class="example">
+        <div class="ex-title">示例 4 · 简报内容错误（最终输出 vs 实际产物）</div>
+        <div class="step problem"><span class="label">问题：</span>前端展示的简报是 LLM 收尾陈词（FINISH: local only...），不是真正的新闻。</div>
+        <div class="step locate"><span class="label">定位：</span>LLM 的 final_text 只是收尾，真正的简报是 write_file 写到本地文件的内容。</div>
+        <div class="step solve"><span class="label">解决：</span>finish 时检查 file_path，有值就读本地文件内容作为 markdown_content 存 DB。</div>
+        <div class="step think"><span class="label">思考：</span>ReAct Agent 的特性——最终输出和实际产物可能分离，两者都要处理好。</div>
+      </div>
+
+      <div class="example">
+        <div class="ex-title">示例 5 · SSE POST 限制（浏览器 API vs 协议本身）</div>
+        <div class="step problem"><span class="label">问题：</span>EventSource 只支持 GET，但生成简报要 POST 传 user_id。</div>
+        <div class="step locate"><span class="label">定位：</span>浏览器原生 API 限制，SSE 协议本身支持 POST。</div>
+        <div class="step solve"><span class="label">解决：</span>fetch POST + ReadableStream，按 \n\n 分割事件，data: 行 JSON.parse。</div>
+        <div class="step think"><span class="label">思考：</span>备选 GET + query param 不优雅，WebSocket 没必要全双工，fetch + ReadableStream 最轻量。</div>
+      </div>
+    </section>
+
+    <!-- 必背 -->
+    <section id="cheat" class="cheat-sheet">
+      <h2><span class="section-num">★</span> 必背 5 件事（1 小时准备版）</h2>
+      <ol>
+        <li><b>项目一句话：</b>ReAct 循环驱动，LLM 自主决策工具调用</li>
+        <li><b>容错决策链：</b>ERROR → LLM 想重试 → 重试 → 又 ERROR → 回退本地（无效 webhook，HTTP 405）</li>
+        <li><b>踩坑修复：</b>stream_mode 累积消息去重，tool_call_count 从 109 降到 10</li>
+        <li><b>安全约束：</b>write_file 双重路径校验 + bash denylist + 密钥走环境变量</li>
+        <li><b>工程化：</b>41 单元测试 + Docker + JSON 结构化日志</li>
+      </ol>
+      <p class="footer-note">记住这 5 条 + 每题的关键词，面试够用。术语只是包装，理解 + 真实踩坑记录才是核心。</p>
+    </section>
+
+    <!-- 技巧 -->
+    <section id="tips">
+      <h2><span class="section-num">💬</span> 口语化技巧</h2>
+      <table class="tips-table">
+        <thead><tr><th>场景</th><th>怎么说</th></tr></thead>
+        <tbody>
+          <tr><td>不确定术语</td><td>"我记不太清具体术语，但我知道它是做 XX 的..."</td></tr>
+          <tr><td>拉回项目</td><td>"理论上这个概念是 XX，我项目里实际遇到的是..."</td></tr>
+          <tr><td>承认不足</td><td>"这个我目前 MVP 没做，生产化我会这么处理..."</td></tr>
+          <tr><td>带数字</td><td>"从 109 降到 10" 比 "明显减少" 可信 10 倍</td></tr>
+          <tr><td>带文件</td><td>"我在 agent.py 的 _parse_finish 里..." 证明真做过</td></tr>
+          <tr><td>说权衡</td><td>"updates 模式拿不到最终 message，所以还是 values + 去重"</td></tr>
+          <tr><td>万能兜底</td><td>"这个场景我项目里没直接遇到，但我会先 [思路]，关键要处理 [边界]"</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      <p>每日 AI 新闻助手 Agent · <a href="https://github.com/Sunset0516/daily-ai-news-agent" target="_blank">GitHub</a></p>
+      <p style="margin-top:6px;">本手册基于项目真实实现和踩坑记录整理，所有回答可追溯到具体代码文件</p>
+    </footer>
+
+  </main>
+</div>
+
+<!-- 返回顶部 -->
+<button class="back-top" id="backTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+// 深色模式切换
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  document.getElementById('themeBtn').textContent = next === 'dark' ? '☀️ 浅色' : '🌙 深色';
+  localStorage.setItem('theme', next);
+}
+// 恢复主题
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme === 'dark') {
+  document.documentElement.setAttribute('data-theme', 'dark');
+  document.getElementById('themeBtn').textContent = '☀️ 浅色';
+}
+
+// 侧边栏高亮
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.sidebar a');
+window.addEventListener('scroll', () => {
+  let current = '';
+  sections.forEach(s => {
+    const top = s.offsetTop - 100;
+    if (window.scrollY >= top) current = s.id;
+  });
+  navLinks.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+  // 返回顶部
+  document.getElementById('backTop').classList.toggle('show', window.scrollY > 400);
+});
+</script>
+
+</body>
+</html>
